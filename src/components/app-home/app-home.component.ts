@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import {DatepickerOptions} from '../../ng-datepicker/ng-datepicker.component';
+import { DatepickerOptions } from '../../ng-datepicker/ng-datepicker.component';
 import * as enLocale from 'date-fns/locale/en';
 import * as frLocale from 'date-fns/locale/fr';
 
@@ -34,7 +34,6 @@ export class AppHomeComponent {
 	date: Date;
 	options: DatepickerOptions = {
 		locale: enLocale,
-		displayFormat: 'DD-MM-YYYY'
 	};
 
 	private isDialogOpen = false;

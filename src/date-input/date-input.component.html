@@ -1,0 +1,8 @@
+<div class="date-input">
+
+	<ng-datepicker [(ngModel)]="date" (ngModelChange)="onChaneDataFromDialog($event)" [options]="datepickerOptions" [headless]="true" [isOpened]="isDialogOpen" (onClose)="dialogClosed()">
+		<input type="text" [(ngModel)]='inputText' />
+		<button (click)="openDialog()">D</button>
+	</ng-datepicker>
+
+</div>

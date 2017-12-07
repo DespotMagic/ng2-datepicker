@@ -33,7 +33,7 @@ export interface DatepickerOptions {
 	firstCalendarDay?: number; // 0 = Sunday (default), 1 = Monday, ..
 	locale?: object;
 
-	minView?: string;
+	minView?: 'days' | 'months' | 'years';
 }
 
 @Component({
@@ -149,9 +149,7 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 			this.initYears();
 			this.initMonth();
 		}
-		//if (changes['isOpened'] && changes['isOpened'].previousValue != changes['isOpened'].currentValue) {
-		//	// aa prop changed
-		//}
+
 	}
 
 	setOptions(): void {
