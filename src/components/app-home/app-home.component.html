@@ -2,12 +2,18 @@
   <div class="columns is-multiline">
     <div class="column is-6 is-offset-3">
       <div class="datepicker-container">
-        model value: {{ date }}
+        model value: 
       </div>
     </div>
     <div class="column is-6 is-offset-3">
       <div class="datepicker-container">
-        <ng-datepicker [(ngModel)]="date" [options]="options"></ng-datepicker>
+
+	
+        <ng-datepicker [(ngModel)]="date" (ngModelChange)="onChane($event)" [options]="options" [headless]="true" [isOpened]="isDialogOpen" (onClose)="dialogClosed()">
+			<input type="text" [(ngModel)]='inputDate' />
+			<button (click)="openDialog()">D</button>	
+		</ng-datepicker>
+
       </div>
     </div>
   </div>

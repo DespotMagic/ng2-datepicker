@@ -21,7 +21,7 @@ module.exports = {
         { loader: 'angular2-template-loader' }
       ]},
       { test: /\.json$/, use: 'json-loader' },
-      { test: /\.sass$/, use: ['to-string-loader', 'css-loader', 'sass-loader'] },
+	  { test: /\.scss$|\.sass$/, use: ['to-string-loader', 'css-loader', 'sass-loader'] },
       { test: /\.html$/, loader: 'html-loader', options: { minimize: true, removeAttributeQuotes: false, caseSensitive: true, customAttrSurround: [ [/#/, /(?:)/], [/\*/, /(?:)/], [/\[?\(?/, /(?:)/] ], customAttrAssign: [ /\)?\]?=/ ] } }
     ]
   },

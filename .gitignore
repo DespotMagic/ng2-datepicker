@@ -7,3 +7,4 @@ lib/
 *.ngfactory.ts
 *.ngstyle.ts
 *.d.ts
+.vs/

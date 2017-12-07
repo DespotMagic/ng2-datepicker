@@ -1,0 +1,179 @@
+
+$white: #ffffff;
+$background: $white;
+$border: #DFE3E9;
+$shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.08);
+$radius: 12px;
+$text: #3D495C;
+$text-secondary: #9fa3a7;
+$color: #fc6433;
+
+.ngx-datepicker-position-bottom-left {
+	top: 35px;
+	right: 0;
+}
+
+.ngx-datepicker-position-bottom-right {
+	top: 35px;
+	left: 0;
+}
+
+.ngx-datepicker-position-top-left {
+	bottom: 35px;
+	right: 0;
+}
+
+.ngx-datepicker-position-top-right {
+	bottom: 35px;
+	left: 0;
+}
+
+.ngx-datepicker-container {
+	position: relative;
+
+	.ngx-datepicker-input {
+		padding: 5px 10px;
+		font-size: 14px;
+		width: 200px;
+		outline: none;
+		border: 1px solid $border;
+	}
+
+	.ngx-datepicker-calendar-container {
+		position: absolute;
+		width: 280px;
+		background: $background;
+		box-shadow: $shadow;
+		border: 1px solid $border;
+		border-radius: $radius;
+
+		.topbar-container {
+			background-color: #F5F5F5;
+			width: 100%;
+			height: 40px;
+			padding: 10px 15px;
+			border-bottom: 1px solid $border;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			user-select: none;
+			border-radius: $radius $radius 0 0;
+
+			svg {
+				cursor: pointer;
+
+				g {
+					fill: #CED0DA;
+				}
+			}
+
+			.topbar-title {
+				color: $text;
+				font-size: 14px;
+				font-weight: 600;
+				cursor: pointer;
+			}
+
+			&.view-year {
+				justify-content: center;
+
+				svg {
+					display: none;
+				}
+			}
+		}
+
+		.main-calendar-container {
+			width: 100%;
+			height: 100%;
+			padding: 10px;
+			font-size: 12px;
+			font-weight: 500;
+
+
+			.main-calendar-day-names {
+				color: $text-secondary;
+				width: 100%;
+				display: flex;
+				align-items: center;
+
+
+				.day-name-unit {
+					width: calc(100% / 7);
+					text-transform: uppercase;
+					text-align: center;
+				}
+			}
+
+			.main-calendar-days, .main-calendar-years, .main-calendar-months {
+				width: 100%;
+				max-height: 275px;
+				overflow: hidden;
+
+				.day-unit, .year-unit, .month-unit {
+					height: 37px;
+					display: inline-flex;
+					float: left;
+					align-items: center;
+					justify-content: center;
+					cursor: pointer;
+					user-select: none;
+					color: $text;
+
+
+					&.is-prev-month {
+						color: $text-secondary;
+					}
+
+					&:hover, &.is-today {
+						background: $text-secondary;
+						color: $white;
+					}
+
+					&.is-selected {
+						background: $color;
+						color: $white;
+					}
+				}
+			}
+
+			.main-calendar-days {
+				padding-top: 10px;
+				display: inline-block;
+
+				.day-unit {
+					width: calc(100% / 7);
+					border-radius: 50%;
+				}
+			}
+
+			.main-calendar-years {
+				height: 210px;
+				display: block;
+				padding: 0;
+
+				.year-unit {
+					width: calc(100% / 3);
+					border-radius: 15px;
+				}
+			}
+
+			.main-calendar-months {
+				height: 160px;
+				display: flex;
+				flex-flow: column wrap;
+				justify-content: space-between;
+				align-content: space-around;
+				padding: 0;
+
+				.month-unit {
+					//width: calc(100% / 3);
+					//height: calc(100% / 4);
+					border-radius: 15px;
+					justify-content: flex-start;
+					padding: 5px 10px;
+				}
+			}
+		}
+	}
+}
