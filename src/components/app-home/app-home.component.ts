@@ -38,6 +38,8 @@ export class AppHomeComponent {
 
 	private isDialogOpen = false;
 
+	private dis: boolean = true;
+
 	inputDate;
 
 	constructor() {

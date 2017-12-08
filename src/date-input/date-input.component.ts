@@ -1,51 +1,68 @@
 import {DatepickerOptions} from '../ng-datepicker/ng-datepicker.component';
 import * as enLocale from 'date-fns/locale/en';
 
-import { Component, OnInit, Input, Output, OnChanges, SimpleChanges, HostListener, forwardRef, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnChanges, Input, Output, SimpleChanges, HostListener, forwardRef, EventEmitter } from '@angular/core';
 import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
 
 
 import {
-	startOfMonth,
-	endOfMonth,
-	addMonths,
-	subMonths,
+	//startOfMonth,
+	//endOfMonth,
+	//addMonths,
+	//subMonths,
 	addYears,
-	subYears,
-	setYear,
-	eachDay,
-	getDate,
-	getMonth,
+	//subYears,
+	//setYear,
+	//eachDay,
+	//getDate,
+	//getMonth,
 	getYear,
-	isToday,
-	isSameDay,
-	isSameMonth,
-	isSameYear,
+	//isToday,
+	//isSameDay,
+	//isSameMonth,
+	//isSameYear,
 	format,
-	getDay,
-	subDays,
-	setDay
+	//getDay,
+	//subDays,
+	//setDay,
+
+	parse,
+	isValid
 } from 'date-fns';
+
+
+export interface DateInputOptions {
+	minDate?: string;
+	maxDate?: string;
+	displayFormat?: string; // default: 'MMM D[,] YYYY'
+	mode?: 'days' | 'months' | 'years';
+}
 
 @Component({
 	selector: 'date-input',
 	templateUrl: 'date-input.component.html',
-	//styleUrls: ['date-input.component'],
+	styleUrls: ['date-input.component.scss'],
 	providers: [
 		{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => DateInputComponent), multi: true }
 	]
 })
-export class DateInputComponent implements ControlValueAccessor, OnInit {
+export class DateInputComponent implements ControlValueAccessor, OnInit, OnChanges {
 
-	@Input() mode: 'days' | 'months' | 'years';
+	@Input() mode?: 'days' | 'months' | 'years';
 
-	@Input() options: any;
+	@Input() options?: DateInputOptions;
 
 	private date: Date;
+	private disabled: boolean = false;
 
 	private datepickerOptions: DatepickerOptions;
 	private isDialogOpen = false;
 	private inputText;
+
+
+	private minDate: Date;
+	private maxDate: Date;
+	private displayFormat: string = 'MM/YYYY';
 
 	constructor() {
 
@@ -54,7 +71,6 @@ export class DateInputComponent implements ControlValueAccessor, OnInit {
 	ngOnInit() {
 		this.setOptions();
 	}
-
 
 	get value(): Date {
 		return this.date;
@@ -66,24 +82,40 @@ export class DateInputComponent implements ControlValueAccessor, OnInit {
 	}
 	
 	ngOnChanges(changes: SimpleChanges) {
-		if ('selectMode' in changes) {
+		if ('mode' in changes || 'options' in changes) {
 			this.setOptions();
 		}
-
 	}
 
 	setOptions(): void {
+		const today = new Date();
+
+		this.minDate = this.options && this.options.minDate && parse(this.options.minDate);
+		if (!this.minDate || !isValid(this.minDate)) {
+			this.minDate = new Date(1900, 0);
+		}
+
+		this.maxDate = this.options && this.options.maxDate && parse(this.options.maxDate);
+		if (!this.maxDate || !isValid(this.maxDate)) {
+			this.maxDate = addYears(today, 1000);
+		}
+
+		this.displayFormat = this.options && this.options.displayFormat || 'MM/YYYY';
+
+		this.mode = this.mode || this.options && this.options.mode || 'days';
 
 		this.datepickerOptions = {
 			locale: enLocale,
 			minView: this.mode,
-			minYear: this.options && this.options.minYear,
-			maxYear: this.options && this.options.maxYear
-		}
-
+			minYear: getYear(this.minDate),
+			maxYear: getYear(this.maxDate),
+		};
 	}
 
 	openDialog() {
+		if (this.disabled) {
+			return;
+		}
 		this.isDialogOpen = true;
 	}
 
@@ -92,7 +124,7 @@ export class DateInputComponent implements ControlValueAccessor, OnInit {
 	}
 
 	setInputDate(date) {
-		this.inputText = format(date, 'MM/YYYY')
+		this.inputText = format(date, this.displayFormat)
 	}
 
 	onChaneDataFromDialog(newDate) {
@@ -105,6 +137,7 @@ export class DateInputComponent implements ControlValueAccessor, OnInit {
 
 
 	writeValue(val: Date): void {
+
 		this.date = val;
 		this.value = val;
 
@@ -112,6 +145,13 @@ export class DateInputComponent implements ControlValueAccessor, OnInit {
 			this.setInputDate(val);
 		}
 	}
+
+	setDisabledState(isDisabled: boolean): void {
+		this.disabled = isDisabled;
+		if (this.disabled) {
+			this.isDialogOpen = false;
+		}
+     }
 
 	private onTouchedCallback: () => void = () => { };
 	private onChangeCallback: (_: any) => void = () => { };
@@ -124,8 +164,5 @@ export class DateInputComponent implements ControlValueAccessor, OnInit {
 		this.onTouchedCallback = fn;
 	}
 
-	setDisabledState(isDisabled: boolean): void {
-		throw new Error('Method not implemented.');
-	}
 	
 }

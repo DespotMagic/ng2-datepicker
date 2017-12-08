@@ -149,7 +149,6 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 			this.initYears();
 			this.initMonth();
 		}
-
 	}
 
 	setOptions(): void {
