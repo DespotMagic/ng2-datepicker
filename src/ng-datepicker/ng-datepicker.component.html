@@ -57,9 +57,9 @@
   	<div class="main-calendar-container" *ngIf="view === 'months'">
   		<div class="main-calendar-months">
   			<div class="month-unit" *ngFor="let month of months; let i = index;"
-				[ngClass]="{ 'is-selected': month.isSelected }"
+				[ngClass]="{ 'disabled': !month.enabled, 'is-selected': month.isSelected }"
 				(click)="setMonth($event, i)">
-			  {{ month.name }}
+				{{ month.name }}
 			  </div>
   		</div>
   	</div>

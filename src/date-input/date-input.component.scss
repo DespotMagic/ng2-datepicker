@@ -1,12 +1,23 @@
 .date-input {
-	
-	width: 100%;
-	height: 100%;
-
+	height: 35px;
 	max-width: 200px;
 	max-height: 35px;
 
+	&.days {
+		width: 140px;
+	}
+
+	&.months {
+		width: 120px;
+	}
+
+	&.years {
+		width: 100px;
+	}
+
+
 	&__container {
+		height: 100%;
 		display: flex;
 		flex-flow: row nowrap;
 		align-items: stretch;
@@ -14,11 +25,27 @@
 		&__input {
 			flex-grow: 1;
 			min-width: 50px;
+			padding-left: 10px;
+			height: 100%;
 		}
 
-		&__buttom {
+		&__button {
 			flex-grow: 0;
-			width: 25px;
+			width: 40px;
+			min-width: 40px;
+			background-color: #99bcc2;
+			padding: 0px;
+			height: 100%;
+
+			.calendar-icon {
+				height: 100%;
+				width: 100%;
+				background: url(/src/assets/public/images/calendar-icon.png);
+				background-repeat: no-repeat;
+				background-color: #99bcc2;
+				background-position: center center;
+				display: inline-block;
+			}
 		}
 	}
 }

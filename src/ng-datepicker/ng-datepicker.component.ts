@@ -6,16 +6,13 @@ import * as moment from 'moment';
 const Moment: any = (<any>moment).default || moment;
 
 export interface DatepickerOptions {
-	minYear?: number;
-	maxYear?: number;
-	firstWeekdaySunday?: boolean; // 0 = Sunday (default), 1 = Monday, ..
-
+	minDate?: Date;
+	maxDate?: Date;
+	firstWeekdaySunday?: boolean;
 	minView?: 'days' | 'months' | 'years';
-	//startView?: 'days' | 'months' | 'years';
 }
 
-
-export interface CalendarDate {
+interface CalendarDate {
 	day: number;
 	month: number;
 	year: number;
@@ -24,7 +21,6 @@ export interface CalendarDate {
 	isSelected: boolean;
 	momentObj: moment.Moment;
 }
-
 
 @Component({
 	selector: 'ng-datepicker',
@@ -53,22 +49,19 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 	 */
 	@Input() position = 'bottom-right';
 
-
-
 	private innerValue: moment.Moment;
 	private date: moment.Moment;
 	private skipOneClick: boolean;
 
-	minYear: number;
-	maxYear: number;
+	minDate?: Date;
+	maxDate?: Date;
 
 	firstWeekdaySunday: boolean;
 	view: string;
 	minView: string;
 
-
 	private years: { year: number; isThisYear: boolean }[];
-	private months: { name: string; isSelected: boolean }[];
+	private months: { name: string; isSelected: boolean; enabled: boolean }[];
 	private days: CalendarDate[];
 	private dayNames: string[];
 
@@ -136,15 +129,14 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 	}
 
 	setOptions(): void {
-		const today: moment.Moment = Moment();
 
-		this.minYear = this.options.minYear || today.year() - 100;
-		this.maxYear = this.options.maxYear || today.year() + 100;
+		this.minDate = this.options.minDate ? this.options.minDate : null;
+		this.maxDate = this.options.maxDate ? this.options.maxDate : null;
 		this.firstWeekdaySunday = this.options.firstWeekdaySunday || true;
 		this.minView = this.options.minView || 'months';
-
 		this.view = this.minView;
-		//this.startView = this.options && this.options.startView || this.minView;
+
+		
 	}
 
 	next(): void {
@@ -203,7 +195,6 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		}
 	}
 
-
 	gotoDayView() {
 		this.view = 'days';
 		this.generateCalendar();
@@ -218,7 +209,6 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		this.generateYears();
 		this.view = 'years';
 	}
-
 
 	initView(v?: string) {
 		const view = v || this.view;
@@ -250,17 +240,17 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 			const selected: boolean = (selectedDate && selectedDate.isSame(currentDate, 'day'));
 			let betweenMinMax = true;
 
-			//if (this.minDate !== null) {
-			//	if (this.maxDate !== null) {
-			//		betweenMinMax = currentDate.isBetween(this.minDate, this.maxDate, 'day', '[]') ? true : false;
-			//	} else {
-			//		betweenMinMax = currentDate.isBefore(this.minDate, 'day') ? false : true;
-			//	}
-			//} else {
-			//	if (this.maxDate !== null) {
-			//		betweenMinMax = currentDate.isAfter(this.maxDate, 'day') ? false : true;
-			//	}
-			//}
+			if (this.minDate !== null) {
+				if (this.maxDate !== null) {
+					betweenMinMax = currentDate.isBetween(this.minDate, this.maxDate, 'day', '[]') ? true : false;
+				} else {
+					betweenMinMax = currentDate.isBefore(this.minDate, 'day') ? false : true;
+				}
+			} else {
+				if (this.maxDate !== null) {
+					betweenMinMax = currentDate.isAfter(this.maxDate, 'day') ? false : true;
+				}
+			}
 
 			const day: CalendarDate = {
 				day: i > 0 ? i : null,
@@ -288,15 +278,33 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 	generateMonths(): void {
 		const selectedDate: moment.Moment = Moment(this.innerValue);
 
-		this.months = this.monthLongName.map((month, i) => ({
-			name: month,
-			isSelected: (selectedDate && selectedDate.isSame(this.date, 'year') && i === selectedDate.month()) ? true : false
-		}));
+
+		let minMonth = 0;
+		let maxMonth = 12;
+
+		if (this.minDate !== null && this.date.isSame(this.minDate, 'year')) {
+			minMonth = this.minDate.getMonth();
+		}
+		if (this.maxDate !== null && this.date.isSame(this.maxDate, 'year')) {
+			maxMonth = this.maxDate.getMonth();
+		}
+
+		this.months = this.monthLongName.map((month, i) => {
+			return {
+				name: month,
+				enabled: (i >= minMonth && i <= maxMonth),
+				isSelected: (selectedDate && selectedDate.isSame(this.date, 'year') && i === selectedDate.month()) ? true : false
+			};
+		});
 	}
 
 	generateYears(): void {
-		const range = this.maxYear - this.minYear;
-		this.years = Array.from(new Array(range), (x, i) => i + this.minYear).map(year => {
+
+		const minYear: number = this.minDate != null ? this.minDate.getFullYear() : Moment().year() - 110;
+		const maxYear: number = this.maxDate != null ? this.maxDate.getFullYear() : Moment().year() + 110;
+
+		const range = maxYear - minYear+1;
+		this.years = Array.from(new Array(range), (x, i) => i + minYear).map(year => {
 			return { year: year, isThisYear: year === this.date.year() };
 		});
 	}
@@ -312,10 +320,6 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 				break;
 			}
 		}		
-	}
-
-	toggle(): void {
-		this.isOpened = !this.isOpened;
 	}
 
 	close(): void {

@@ -9,10 +9,9 @@ const Moment: any = (<any>moment).default || moment;
 export interface DateInputOptions {
 	minDate?: string | Date;
 	maxDate?: string | Date;
-	format?: string; // default: 'MMM D[,] YYYY'
 	mode?: 'days' | 'months' | 'years';
+	disableTextMask?: boolean;
 }
-
 @Component({
 	selector: 'date-input',
 	templateUrl: 'date-input.component.html',
@@ -36,14 +35,20 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 	private inputText;
 
 
-	private minDate: moment.Moment;
-	private maxDate: moment.Moment;
+	private minDate: Date;
+	private maxDate: Date;
 
 	private format: string = 'MM/YYYY';
-	private defaultFormat = 'MM/YYYY'
+	private maskParams: any;
 
 	constructor() {
 		this.options = this.options || {};
+		this.maskParams = {
+			guide: true,
+			placeholderChar: '_',
+			showMask: false,
+			mask: null
+		};
 	}
 
 	ngOnInit() {
@@ -69,7 +74,6 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 		if ('mode' in changes && !changes['mode'].firstChange) {
 			this.setOptions();
 		}
-
 	}
 
 	setOptions(): void {
@@ -77,13 +81,13 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 
 		if (this.options.minDate && Moment(this.options.minDate).isValid()) 
 		{
-			this.minDate = Moment(this.options.minDate);
+			this.minDate = Moment(this.options.minDate).toDate();
 		} else {
 			this.minDate = null;
 		}
 
 		if (this.options.maxDate && Moment(this.options.maxDate).isValid()) {
-			this.maxDate = Moment(this.options.maxDate);
+			this.maxDate = Moment(this.options.maxDate).toDate();
 		} else {
 			this.maxDate = null;
 		}
@@ -92,22 +96,30 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 
 		switch (this.mode) {
 			case 'days': {
-				this.defaultFormat = 'DD/MM/YYYY';
+				this.format = 'MM/DD/YYYY';
+				this.maskParams.mask = [/\d/, /\d/, '/', /\d/, /\d/, '/', /\d/, /\d/, /\d/, /\d/];
 				break;
 			}
 			case 'years': {
-				this.defaultFormat = 'YYYY';
+				this.format = 'YYYY';
+				this.maskParams.mask = [/\d/, /\d/, /\d/, /\d/];
 				break;
 			}
 			case 'months': default: {
-				this.defaultFormat = 'MM/YYYY';
+				this.format = 'MM/YYYY';
+				this.maskParams.mask = [/\d/, /\d/, '/', /\d/, /\d/, /\d/, /\d/];
 				break;
 			}
 		}	
-		this.format = this.options.format || this.defaultFormat;
+
+		if (this.options.disableTextMask) {
+			this.maskParams.mask = null;
+		}
 
 		this.datepickerOptions = {
 			minView: this.mode,
+			minDate: this.minDate,
+			maxDate: this.maxDate
 		};
 
 		this.updateInputText();
@@ -125,30 +137,38 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 		this.isDialogOpen = false;
 	}
 
-	setInputText(date) {
-		this.inputText = date ? date.format(this.format) : '';
-	}
-
 	updateInputText() {
-		this.setInputText(this.date);
+		this.inputText = this.date ? this.date.format(this.format) : '';
 	}
 
 	onChaneDataFromDialog(newDate) {
-		this.setInputText(newDate);
-
-		// TODO: validate
-		this.value = newDate;
+		this.setNewVal(newDate);
 	}
 
 	writeValue(val: Date | string): void {
 
 		if (Moment(val).isValid()) {
 			this.date = Moment(val);
-			this.setInputText(this.date);
+			this.updateInputText();
 		} else {
 			this.date = null;
 		}
 	}
+
+	onKey(event: any) {
+		let currentDat = Moment(event.target.value, this.format, true);
+		if (currentDat.isValid()) {
+			this.setNewVal(currentDat);
+		}
+	}
+
+
+	setNewVal(val: moment.Moment) {
+		// TODO: validate for max and min
+		this.value = val;
+		this.updateInputText();
+	}
+	
 
 	setDisabledState(isDisabled: boolean): void {
 		this.disabled = isDisabled;
