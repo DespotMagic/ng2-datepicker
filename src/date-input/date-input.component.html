@@ -1,8 +1,8 @@
 <div class="date-input">
+	<div class="date-input__container">
+		<input class="date-input__container__input" type="text" [(ngModel)]='inputText' [attr.disabled]="disabled?'':null" />
+		<button class="date-input__container__button" (click)="openDialog()" tabindex="-1"><i class="calendar-icon" [attr.disabled]="disabled?'':null"></i></button>
+	</div>
 	<ng-datepicker [(ngModel)]="date" (ngModelChange)="onChaneDataFromDialog($event)" [options]="datepickerOptions" [headless]="true" [isOpened]="isDialogOpen" (onClose)="dialogClosed()">
-		<div class="date-input__container">
-			<input class="date-input__container__input" type="text" [(ngModel)]='inputText' [attr.disabled]="disabled?'':null" />
-			<button class="date-input__container__button" (click)="openDialog()" tabindex="-1" ><i class="calendar-icon" [attr.disabled]="disabled?'':null"></i></button>
-		</div>
 	</ng-datepicker>
 </div>

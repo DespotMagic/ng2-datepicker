@@ -107,8 +107,9 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 		this.datepickerOptions = {
 			locale: enLocale,
 			minView: this.mode,
-			minYear: getYear(this.minDate),
-			maxYear: getYear(this.maxDate),
+
+			//minYear: getYear(this.minDate),
+			//maxYear: getYear(this.maxDate),
 		};
 	}
 

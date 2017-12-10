@@ -1,40 +1,31 @@
 import { Component, OnInit, Input, Output, OnChanges, SimpleChanges, ElementRef, HostListener, forwardRef, EventEmitter } from '@angular/core';
 import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
-import {
-	startOfMonth,
-	startOfYear,
-	endOfMonth,
-	addMonths,
-	subMonths,
-	addYears,
-	subYears,
-	setYear,
-	setMonth,
-	eachDay,
-	getDate,
-	getMonth,
-	getYear,
-	isToday,
-	isSameDay,
-	isSameMonth,
-	isSameYear,
-	format,
-	getDay,
-	subDays,
-	setDay
-} from 'date-fns';
 import { ISlimScrollOptions } from 'ngx-slimscroll';
 
+import * as moment from 'moment';
+const Moment: any = (<any>moment).default || moment;
+
 export interface DatepickerOptions {
-	minYear?: number; // default: current year - 30
-	maxYear?: number; // default: current year + 100
-	displayFormat?: string; // default: 'MMM D[,] YYYY'
-	barTitleFormat?: string; // default: 'MMMM YYYY'
-	firstCalendarDay?: number; // 0 = Sunday (default), 1 = Monday, ..
+	minYear?: number;
+	maxYear?: number;
+	firstWeekdaySunday?: boolean; // 0 = Sunday (default), 1 = Monday, ..
 	locale?: object;
 
 	minView?: 'days' | 'months' | 'years';
+	//startView?: 'days' | 'months' | 'years';
 }
+
+
+export interface CalendarDate {
+	day: number;
+	month: number;
+	year: number;
+	enabled: boolean;
+	isToday: boolean;
+	isSelected: boolean;
+	momentObj: moment.Moment;
+}
+
 
 @Component({
 	selector: 'ng-datepicker',
@@ -73,26 +64,18 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 	innerValue: Date;
 	displayValue: string;
 	displayFormat: string;
-	date: Date;
+	date: moment.Moment;
 	barTitle: string;
-	barTitleFormat: string;
+	barTitleFormat: string = 'MMMM YYYY';
 	minYear: number;
 	maxYear: number;
-	firstCalendarDay: number;
+	firstWeekdaySunday: boolean;
 	view: string;
 	years: { year: number; isThisYear: boolean }[];
 	months: { name: string; isSelected: boolean }[];
 	dayNames: string[];
 	scrollOptions: ISlimScrollOptions;
-	days: {
-		date: Date;
-		day: number;
-		month: number;
-		year: number;
-		inThisMonth: boolean;
-		isToday: boolean;
-		isSelected: boolean;
-	}[];
+	days: CalendarDate[];
 	locale: object;
 	minView: string;
 
@@ -112,6 +95,14 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 	}
 
 	constructor(private elementRef: ElementRef) {
+		this.options = this.options || {};
+		this.monthShortName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+		this.monthLongName = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+	}
+
+	ngOnInit() {
+		this.date = Moment();
+
 		this.scrollOptions = {
 			barBackground: '#DFE3E9',
 			gridBackground: '#FFFFFF',
@@ -123,19 +114,15 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 			gridMargin: '0'
 		};
 
-		this.monthShortName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-		this.monthLongName = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-	}
-
-	ngOnInit() {
-		this.date = new Date();
 		this.setOptions();
 		this.view = this.minView || 'days';
-		this.initDayNames();
-		this.initYears();
-		this.initMonth();
 
-		// Check if 'position' property is correct
+		this.initDayNames();
+
+		this.generateCalendar();
+		this.generateMonths();
+		this.generateYears();
+
 		if (this.positions.indexOf(this.position) === -1) {
 			throw new TypeError(`ng-datepicker: invalid position property value '${this.position}' (expected: ${this.positions.join(', ')})`);
 		}
@@ -143,71 +130,74 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 
 	ngOnChanges(changes: SimpleChanges) {
 		if ('options' in changes) {
+			this.close();
 			this.setOptions();
-			this.initDayNames();
-			this.init();
-			this.initYears();
-			this.initMonth();
 		}
 	}
 
 	setOptions(): void {
-		const today = new Date(); // this const was added because during my tests, I noticed that at this level this.date is undefined
-		this.minYear = this.options && this.options.minYear || getYear(today) - 30;
-		this.maxYear = this.options && this.options.maxYear || getYear(today) + 100;
+		const today: moment.Moment = Moment();
 
-		this.displayFormat = this.options && this.options.displayFormat || 'MMM D[,] YYYY';
-		this.barTitleFormat = this.options && this.options.barTitleFormat || 'MMMM YYYY';
-		this.firstCalendarDay = this.options && this.options.firstCalendarDay || 0;
-		this.locale = this.options && { locale: this.options.locale } || {};
-		this.minView = this.options && this.options.minView || 'days';
+		this.minYear = this.options.minYear || today.year() - 100;
+		this.maxYear = this.options.maxYear || today.year() + 100;
+		this.firstWeekdaySunday = this.options.firstWeekdaySunday || true;
+		this.locale = this.options.locale && { locale: this.options.locale } || {};
+		this.minView = this.options.minView || 'days';
+
+		//this.startView = this.options && this.options.startView || this.minView;
 	}
 
 	next(): void {
 
 		if (this.view === 'days') {
-			this.date = addMonths(this.date, 1);
-			this.init();
+			this.date.add(1,'month');
+			this.generateCalendar();
 		} else {
-			this.date = addYears(this.date, 1);
-			this.initMonth();
-			this.barTitle = format(startOfYear(this.date), this.barTitleFormat, this.locale);
+			this.date.add(1, 'year');
+			this.generateMonths();
 		}
 	}
 
 	prev(): void {
 
 		if (this.view === 'days') {
-			this.date = subMonths(this.date, 1);
-			this.init();
+			this.date.subtract(1, 'month');
+			this.generateCalendar();
 		} else {
-			this.date = subYears(this.date, 1);
-			this.initMonth();
-			this.barTitle = format(startOfYear(this.date), this.barTitleFormat, this.locale);
+			this.date.subtract(1, 'year');
+			this.generateMonths();
 		}
 	}
 
-	setDate(i: number): void {
-		this.date = this.days[i].date;
-		this.value = this.date;
-		this.init();
+	setDate(e: MouseEvent, seletedDate: moment.Moment): void {
+		e.preventDefault();
+
+		this.date = seletedDate;
+		this.value = this.date.toDate();
+		this.generateCalendar();
 		this.close();
 	}
 
-	setMonth(i: number): void {
-		this.date = setMonth(this.date, i);
+	setMonth(e: MouseEvent, month: number): void {
+		e.preventDefault();
+
+		this.date = this.date.month(month);
+
 		if (this.minView === 'months') {
-			this.value = startOfMonth(this.date);
+			this.value = this.date.startOf('month').toDate();
 			this.close();
 		} else {
 			this.gotoDayView();
 		}
 	}
 
-	setYear(i: number): void {
-		this.date = setYear(this.date, this.years[i].year);
+	setYear(e: MouseEvent, year: number): void {
+		e.preventDefault();
+
+		this.date = this.date.year(year);
+
 		if (this.minView === 'years') {
-			this.value = startOfYear(this.date);
+			this.value = this.date.startOf('year').toDate();
 			this.close();
 		} else {
 			this.gotoMonthView();
@@ -216,77 +206,132 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 
 
 	gotoDayView() {
-		this.barTitleFormat = 'MMMM YYYY';
 		this.view = 'days';
-		this.init();
+		this.generateCalendar();
 	}
 
 	gotoMonthView() {
-		this.initMonth();
-		this.barTitleFormat = 'YYYY';
+		this.generateMonths();
 		this.view = 'months';
-		this.barTitle = format(startOfMonth(this.date), this.barTitleFormat, this.locale);
 	}
 
 	gotoYearView() {
-		this.initYears();
-		this.barTitleFormat = 'YYYY';
+		this.generateYears();
 		this.view = 'years';
-		this.barTitle = format(startOfYear(this.date), this.barTitleFormat, this.locale);
 	}
 
-	init(): void {
-		const start = startOfMonth(this.date);
-		const end = endOfMonth(this.date);
+	//generateCalendar__OLD(): void {
 
-		this.days = eachDay(start, end).map(date => {
-			return {
-				date: date,
-				day: getDate(date),
-				month: getMonth(date),
-				year: getYear(date),
-				inThisMonth: true,
-				isToday: isToday(date),
-				isSelected: isSameDay(date, this.innerValue) && isSameMonth(date, this.innerValue) && isSameYear(date, this.innerValue)
-			};
-		});
 
-		for (let i = 1; i <= getDay(start) - this.firstCalendarDay; i++) {
-			const date = subDays(start, i);
-			this.days.unshift({
-				date: date,
-				day: getDate(date),
-				month: getMonth(date),
-				year: getYear(date),
-				inThisMonth: false,
-				isToday: isToday(date),
-				isSelected: isSameDay(date, this.innerValue) && isSameMonth(date, this.innerValue) && isSameYear(date, this.innerValue)
-			});
+	//	const date: moment.Moment = Moment(this.date);
+	//	const month = date.month();
+	//	const year = date.year();
+
+
+	//	const start = startOfMonth(this.date);
+	//	const end = endOfMonth(this.date);
+
+	//	this.days = eachDay(start, end).map(date => {
+	//		return {
+	//			date: date,
+	//			day: getDate(date),
+	//			month: getMonth(date),
+	//			year: getYear(date),
+	//			inThisMonth: true,
+	//			isToday: isToday(date),
+	//			isSelected: isSameDay(date, this.innerValue) && isSameMonth(date, this.innerValue) && isSameYear(date, this.innerValue)
+	//		};
+	//	});
+
+	//	for (let i = 1; i <= getDay(start) - this.firstWeekDay; i++) {
+	//		const date = subDays(start, i);
+	//		this.days.unshift({
+	//			date: date,
+	//			day: getDate(date),
+	//			month: getMonth(date),
+	//			year: getYear(date),
+	//			inThisMonth: false,
+	//			isToday: isToday(date),
+	//			isSelected: isSameDay(date, this.innerValue) && isSameMonth(date, this.innerValue) && isSameYear(date, this.innerValue)
+	//		});
+	//	}
+
+	//	//this.displayValue = format(this.innerValue, this.displayFormat, this.locale);
+	//	//this.barTitle = format(start, this.barTitleFormat, this.locale);
+
+	//	initDayNames();
+	//}
+
+
+	generateCalendar() {
+		const month = this.date.month();
+		const year = this.date.year();
+		let n = 1;
+
+		const firstWeekDay = (this.firstWeekdaySunday) ? this.date.date(2).day() : this.date.date(1).day();
+
+		if (firstWeekDay !== 1) {
+			n -= (firstWeekDay + 6) % 7;
 		}
 
-		this.displayValue = format(this.innerValue, this.displayFormat, this.locale);
-		this.barTitle = format(start, this.barTitleFormat, this.locale);
+		this.days = [];
+		const selectedDate: moment.Moment = Moment(this.innerValue);
 
+		for (let i = n; i <= this.date.endOf('month').date(); i += 1) {
+			const currentDate: moment.Moment = Moment(`${i}.${month + 1}.${year}`, 'DD.MM.YYYY');
+			const today: boolean = (Moment().isSame(currentDate, 'day') && Moment().isSame(currentDate, 'month'));
+			const selected: boolean = (selectedDate && selectedDate.isSame(currentDate, 'day'));
+			let betweenMinMax = true;
+
+			//if (this.minDate !== null) {
+			//	if (this.maxDate !== null) {
+			//		betweenMinMax = currentDate.isBetween(this.minDate, this.maxDate, 'day', '[]') ? true : false;
+			//	} else {
+			//		betweenMinMax = currentDate.isBefore(this.minDate, 'day') ? false : true;
+			//	}
+			//} else {
+			//	if (this.maxDate !== null) {
+			//		betweenMinMax = currentDate.isAfter(this.maxDate, 'day') ? false : true;
+			//	}
+			//}
+
+			const day: CalendarDate = {
+				day: i > 0 ? i : null,
+				month: i > 0 ? month : null,
+				year: i > 0 ? year : null,
+				enabled: i > 0 ? betweenMinMax : false,
+				isToday: i > 0 && today ? true : false,
+				isSelected: i > 0 && selected ? true : false,
+				momentObj: currentDate
+			};
+
+			this.days.push(day);
+		}
 	}
 
-	initYears(): void {
-		const range = this.maxYear - this.minYear;
-		this.years = Array.from(new Array(range), (x, i) => i + this.minYear).map(year => {
-			return { year: year, isThisYear: year === getYear(this.date) };
-		});
-	}
 
 	initDayNames(): void {
 		this.dayNames = [];
-		const start = this.firstCalendarDay;
+		const start = this.firstWeekdaySunday ? 0 : 1;
 		for (let i = start; i <= 6 + start; i++) {
-			const date = setDay(new Date(), i);
-			this.dayNames.push(format(date, 'ddd', this.locale));
+			this.dayNames.push(Moment().day(i).format('ddd'));
 		}
 	}
 
-	initMonth(): void {
-		this.months = this.monthLongName.map((month, i) => ({ name: month, isSelected: isSameYear(this.date, this.innerValue) && i === getMonth(this.innerValue) }));
+	generateMonths(): void {
+		const selectedDate: moment.Moment = Moment(this.innerValue);
+
+		this.months = this.monthLongName.map((month, i) => ({
+			name: month,
+			isSelected: (selectedDate && selectedDate.isSame(this.date, 'year') && i === selectedDate.month()) ? true : false
+		}));
+	}
+
+	generateYears(): void {
+		const range = this.maxYear - this.minYear;
+		this.years = Array.from(new Array(range), (x, i) => i + this.minYear).map(year => {
+			return { year: year, isThisYear: year === this.date.year() };
+		});
 	}
 
 	toggleView(): void {
@@ -296,25 +341,23 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 			case 'years': this.gotoMonthView(); break;
 		}		
 	}
-	
 
 	toggle(): void {
 		this.isOpened = !this.isOpened;
 	}
 
 	close(): void {
-		this.isOpened = false;
-		this.onClose.emit();
-		this.view = this.minView || 'days';
+		if (this.isOpened) {
+			this.isOpened = false;
+			this.onClose.emit();
+			this.view = this.minView || 'days';
+		}
 	}
 
 	writeValue(val: Date) {
 		if (val) {
-			this.date = val;
+			this.date = Moment(val);
 			this.innerValue = val;
-			this.init();
-			this.displayValue = format(this.innerValue, this.displayFormat, this.locale);
-			this.barTitle = format(startOfMonth(val), this.barTitleFormat, this.locale);
 		}
 	}
 
@@ -326,7 +369,7 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		this.onTouchedCallback = fn;
 	}
 
-	@HostListener('document:click', ['$event']) onBlur(e: MouseEvent) {
+	@HostListener('document:click', ['$event']) onCLick(e: MouseEvent) {
 		if (!this.isOpened) {
 			return;
 		}
@@ -344,13 +387,18 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 			}
 		}
 
-		const container = this.elementRef.nativeElement.querySelector('.ngx-datepicker-container');
-		if (container && container !== e.target
-			&& !container.contains(<any>e.target)
-			&& !(<any>e.target).classList.contains('year-unit')
-			&& !(<any>e.target).classList.contains('month-unit')
-			&& !(<any>e.target).classList.contains('topbar-title')) {
+		//const container = this.elementRef.nativeElement.querySelector('.ngx-datepicker-container');
+
+		if (this.elementRef.nativeElement !== e.target && !this.elementRef.nativeElement.contains((<any>e.target))) {
 			this.close();
 		}
+
+		//if (container && container !== e.target
+		//	&& !container.contains(<any>e.target)
+		//	&& !(<any>e.target).classList.contains('year-unit')
+		//	&& !(<any>e.target).classList.contains('month-unit')
+		//	&& !(<any>e.target).classList.contains('topbar-title')) {
+		//	this.close();
+		//}
 	}
 }

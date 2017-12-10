@@ -121,11 +121,12 @@ $color: #fc6433;
 					color: $text;
 
 
-					&.is-prev-month {
+					&.disabled {
 						color: $text-secondary;
+						pointer-events: none;
 					}
 
-					&:hover, &.is-today {
+					&:hover:not(.disabled), &.is-today {
 						background: $text-secondary;
 						color: $white;
 					}
