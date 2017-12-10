@@ -8,11 +8,15 @@
     <div class="column is-6 is-offset-3">
       <div class="datepicker-container">
 
-	  	<date-input [(ngModel)]="date" [disabled]="dis"></date-input>
+	  	<date-input [(ngModel)]="date" [disabled]="dis" [mode]="mode"></date-input>
 
       </div>
 
-		<button (click)="dis = !dis">disable: {{dis}}</button>
+		<button (click)="dis = !dis">disable: {{dis}}</button> | 
+		<h2>Mode: {{mode}}</h2>
+		<button (click)="mode = 'days'">days mode</button> | 
+		<button (click)="mode = 'months'">months mode</button> | 
+		<button (click)="mode = 'years'">years mode</button> | 
 
     </div>
   </div>

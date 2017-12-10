@@ -9,7 +9,6 @@ export interface DatepickerOptions {
 	minYear?: number;
 	maxYear?: number;
 	firstWeekdaySunday?: boolean; // 0 = Sunday (default), 1 = Monday, ..
-	locale?: object;
 
 	minView?: 'days' | 'months' | 'years';
 	//startView?: 'days' | 'months' | 'years';
@@ -40,64 +39,59 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 	@Input() options: DatepickerOptions;
 
 	/**
-	 * Disable datepicker's input
-	 */
-	@Input() headless = false;
-
-	/**
 	 * Set datepicker's visibility state
 	 */
 	@Input() isOpened = false;
+
+	/**
+	*  On datapicker closed
+	*/
+	@Output() onClose = new EventEmitter();
 
 	/**
 	 * Datepicker dropdown position
 	 */
 	@Input() position = 'bottom-right';
 
-	/**
-   *  On datapicker closed
-   */
-	@Output() onClose = new EventEmitter();
 
-	private positions = ['bottom-left', 'bottom-right', 'top-left', 'top-right'];
 
-	innerValue: Date;
-	displayValue: string;
-	displayFormat: string;
-	date: moment.Moment;
-	barTitle: string;
-	barTitleFormat: string = 'MMMM YYYY';
+	private innerValue: moment.Moment;
+	private date: moment.Moment;
+	private skipOneClick: boolean;
+
 	minYear: number;
 	maxYear: number;
+
 	firstWeekdaySunday: boolean;
 	view: string;
-	years: { year: number; isThisYear: boolean }[];
-	months: { name: string; isSelected: boolean }[];
-	dayNames: string[];
-	scrollOptions: ISlimScrollOptions;
-	days: CalendarDate[];
-	locale: object;
 	minView: string;
 
-	monthShortName: string[];
-	monthLongName: string[];
+
+	private years: { year: number; isThisYear: boolean }[];
+	private months: { name: string; isSelected: boolean }[];
+	private days: CalendarDate[];
+	private dayNames: string[];
+
+	private scrollOptions: ISlimScrollOptions;
+
+	private positions: string[] = ['bottom-left', 'bottom-right', 'top-left', 'top-right'];
+	private monthShortName: string[] = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	private monthLongName: string[] = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 	private onTouchedCallback: () => void = () => { };
 	private onChangeCallback: (_: any) => void = () => { };
 
-	get value(): Date {
+	get value(): moment.Moment {
 		return this.innerValue;
 	}
 
-	set value(val: Date) {
+	set value(val: moment.Moment) {
 		this.innerValue = val;
 		this.onChangeCallback(this.innerValue);
 	}
 
 	constructor(private elementRef: ElementRef) {
 		this.options = this.options || {};
-		this.monthShortName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-		this.monthLongName = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 	}
 
 	ngOnInit() {
@@ -115,12 +109,9 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		};
 
 		this.setOptions();
-		this.view = this.minView || 'days';
 
 		this.initDayNames();
 
-		this.generateCalendar();
-		this.generateMonths();
 		this.generateYears();
 
 		if (this.positions.indexOf(this.position) === -1) {
@@ -129,9 +120,18 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 	}
 
 	ngOnChanges(changes: SimpleChanges) {
-		if ('options' in changes) {
+		if ('options' in changes && !changes['options'].firstChange) {
 			this.close();
 			this.setOptions();
+		}
+
+		if ('isOpened' in changes) {
+			if (changes['isOpened'].currentValue === true) {
+				this.skipOneClick = true;
+			}
+
+			if (this.isOpened) this.initView();
+
 		}
 	}
 
@@ -141,9 +141,9 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		this.minYear = this.options.minYear || today.year() - 100;
 		this.maxYear = this.options.maxYear || today.year() + 100;
 		this.firstWeekdaySunday = this.options.firstWeekdaySunday || true;
-		this.locale = this.options.locale && { locale: this.options.locale } || {};
-		this.minView = this.options.minView || 'days';
+		this.minView = this.options.minView || 'months';
 
+		this.view = this.minView;
 		//this.startView = this.options && this.options.startView || this.minView;
 	}
 
@@ -173,8 +173,7 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		e.preventDefault();
 
 		this.date = seletedDate;
-		this.value = this.date.toDate();
-		this.generateCalendar();
+		this.value = this.date;
 		this.close();
 	}
 
@@ -184,7 +183,7 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		this.date = this.date.month(month);
 
 		if (this.minView === 'months') {
-			this.value = this.date.startOf('month').toDate();
+			this.value = this.date.startOf('month');
 			this.close();
 		} else {
 			this.gotoDayView();
@@ -197,7 +196,7 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		this.date = this.date.year(year);
 
 		if (this.minView === 'years') {
-			this.value = this.date.startOf('year').toDate();
+			this.value = this.date.startOf('year');
 			this.close();
 		} else {
 			this.gotoMonthView();
@@ -220,62 +219,30 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		this.view = 'years';
 	}
 
-	//generateCalendar__OLD(): void {
 
-
-	//	const date: moment.Moment = Moment(this.date);
-	//	const month = date.month();
-	//	const year = date.year();
-
-
-	//	const start = startOfMonth(this.date);
-	//	const end = endOfMonth(this.date);
-
-	//	this.days = eachDay(start, end).map(date => {
-	//		return {
-	//			date: date,
-	//			day: getDate(date),
-	//			month: getMonth(date),
-	//			year: getYear(date),
-	//			inThisMonth: true,
-	//			isToday: isToday(date),
-	//			isSelected: isSameDay(date, this.innerValue) && isSameMonth(date, this.innerValue) && isSameYear(date, this.innerValue)
-	//		};
-	//	});
-
-	//	for (let i = 1; i <= getDay(start) - this.firstWeekDay; i++) {
-	//		const date = subDays(start, i);
-	//		this.days.unshift({
-	//			date: date,
-	//			day: getDate(date),
-	//			month: getMonth(date),
-	//			year: getYear(date),
-	//			inThisMonth: false,
-	//			isToday: isToday(date),
-	//			isSelected: isSameDay(date, this.innerValue) && isSameMonth(date, this.innerValue) && isSameYear(date, this.innerValue)
-	//		});
-	//	}
-
-	//	//this.displayValue = format(this.innerValue, this.displayFormat, this.locale);
-	//	//this.barTitle = format(start, this.barTitleFormat, this.locale);
-
-	//	initDayNames();
-	//}
-
+	initView(v?: string) {
+		const view = v || this.view;
+		switch (view) {
+			case 'months': this.generateMonths(); break;
+			case 'years': this.generateYears(); break;
+			default: this.generateCalendar();
+		}
+	}
 
 	generateCalendar() {
+		const date: moment.Moment = Moment(this.date);
 		const month = this.date.month();
 		const year = this.date.year();
 		let n = 1;
 
-		const firstWeekDay = (this.firstWeekdaySunday) ? this.date.date(2).day() : this.date.date(1).day();
+		const firstWeekDay = (this.firstWeekdaySunday) ? date.date(2).day() : date.date(1).day();
 
 		if (firstWeekDay !== 1) {
 			n -= (firstWeekDay + 6) % 7;
 		}
 
 		this.days = [];
-		const selectedDate: moment.Moment = Moment(this.innerValue);
+		const selectedDate = Moment(this.innerValue);
 
 		for (let i = n; i <= this.date.endOf('month').date(); i += 1) {
 			const currentDate: moment.Moment = Moment(`${i}.${month + 1}.${year}`, 'DD.MM.YYYY');
@@ -338,7 +305,12 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		switch (this.view) {
 			case 'days': this.gotoMonthView(); break;
 			case 'months': this.gotoYearView(); break;
-			case 'years': this.gotoMonthView(); break;
+			case 'years': {
+				if (this.minView !== 'years') {
+					this.gotoMonthView();
+				}
+				break;
+			}
 		}		
 	}
 
@@ -357,7 +329,7 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 	writeValue(val: Date) {
 		if (val) {
 			this.date = Moment(val);
-			this.innerValue = val;
+			this.innerValue = Moment(val);
 		}
 	}
 
@@ -374,31 +346,21 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 			return;
 		}
 
-		if (!this.headless) {
-
-			const input = this.elementRef.nativeElement.querySelector('.ngx-datepicker-input');
-
-			if (input == null) {
-			  return;
-			}
-
-			if (e.target === input || input.contains(<any>e.target)) {
-			  return;
-			}
+		if (this.skipOneClick) {
+			this.skipOneClick = false;
+			return;
 		}
 
-		//const container = this.elementRef.nativeElement.querySelector('.ngx-datepicker-container');
+		const container = this.elementRef.nativeElement;
 
-		if (this.elementRef.nativeElement !== e.target && !this.elementRef.nativeElement.contains((<any>e.target))) {
+		if (container && container !== e.target
+			&& !container.contains(<any>e.target)
+			&& !(<any>e.target).classList.contains('year-unit')
+			&& !(<any>e.target).classList.contains('month-unit')
+			&& !(<any>e.target).classList.contains('topbar-title')
+		) 
+		{
 			this.close();
 		}
-
-		//if (container && container !== e.target
-		//	&& !container.contains(<any>e.target)
-		//	&& !(<any>e.target).classList.contains('year-unit')
-		//	&& !(<any>e.target).classList.contains('month-unit')
-		//	&& !(<any>e.target).classList.contains('topbar-title')) {
-		//	this.close();
-		//}
 	}
 }

@@ -33,12 +33,14 @@ import {
 export class AppHomeComponent {
 	date: Date;
 	options: DatepickerOptions = {
-		locale: enLocale,
+	
 	};
 
 	private isDialogOpen = false;
 
 	private dis: boolean = false;
+
+	mode: string = null;
 
 	inputDate;
 

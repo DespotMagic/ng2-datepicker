@@ -92,6 +92,7 @@
   "dependencies": {
     "date-fns": "^1.28.5",
     "moment": "^2.19.3",
-    "ngx-slimscroll": "^3.5.2"
+    "ngx-slimscroll": "^3.5.2",
+    "angular2-text-mask": "8.0.4"
   }
 }

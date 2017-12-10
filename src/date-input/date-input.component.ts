@@ -1,40 +1,15 @@
 import {DatepickerOptions} from '../ng-datepicker/ng-datepicker.component';
-import * as enLocale from 'date-fns/locale/en';
 
 import { Component, OnInit, OnChanges, Input, Output, SimpleChanges, HostListener, forwardRef, EventEmitter } from '@angular/core';
 import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
 
-
-import {
-	//startOfMonth,
-	//endOfMonth,
-	//addMonths,
-	//subMonths,
-	addYears,
-	//subYears,
-	//setYear,
-	//eachDay,
-	//getDate,
-	//getMonth,
-	getYear,
-	//isToday,
-	//isSameDay,
-	//isSameMonth,
-	//isSameYear,
-	format,
-	//getDay,
-	//subDays,
-	//setDay,
-
-	parse,
-	isValid
-} from 'date-fns';
-
+import * as moment from 'moment';
+const Moment: any = (<any>moment).default || moment;
 
 export interface DateInputOptions {
-	minDate?: string;
-	maxDate?: string;
-	displayFormat?: string; // default: 'MMM D[,] YYYY'
+	minDate?: string | Date;
+	maxDate?: string | Date;
+	format?: string; // default: 'MMM D[,] YYYY'
 	mode?: 'days' | 'months' | 'years';
 }
 
@@ -52,7 +27,8 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 
 	@Input() options?: DateInputOptions;
 
-	private date: Date;
+	private date?: moment.Moment;
+
 	private disabled: boolean = false;
 
 	private datepickerOptions: DatepickerOptions;
@@ -60,63 +36,88 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 	private inputText;
 
 
-	private minDate: Date;
-	private maxDate: Date;
-	private displayFormat: string = 'MM/YYYY';
+	private minDate: moment.Moment;
+	private maxDate: moment.Moment;
+
+	private format: string = 'MM/YYYY';
+	private defaultFormat = 'MM/YYYY'
 
 	constructor() {
-
+		this.options = this.options || {};
 	}
 
 	ngOnInit() {
 		this.setOptions();
 	}
 
-	get value(): Date {
+	get value(): moment.Moment {
 		return this.date;
 	}
 
-	set value(val: Date) {
+	set value(val: moment.Moment) {
 		this.date = val;
-		this.onChangeCallback(this.date);
+		let result = this.date ? this.date.format() : null;
+		this.onChangeCallback(result);
 	}
 	
 	ngOnChanges(changes: SimpleChanges) {
-		if ('mode' in changes || 'options' in changes) {
+
+		if ('options' in changes && !changes['options'].firstChange) {
 			this.setOptions();
 		}
+
+		if ('mode' in changes && !changes['mode'].firstChange) {
+			this.setOptions();
+		}
+
 	}
 
 	setOptions(): void {
 		const today = new Date();
 
-		this.minDate = this.options && this.options.minDate && parse(this.options.minDate);
-		if (!this.minDate || !isValid(this.minDate)) {
-			this.minDate = new Date(1900, 0);
+		if (this.options.minDate && Moment(this.options.minDate).isValid()) 
+		{
+			this.minDate = Moment(this.options.minDate);
+		} else {
+			this.minDate = null;
 		}
 
-		this.maxDate = this.options && this.options.maxDate && parse(this.options.maxDate);
-		if (!this.maxDate || !isValid(this.maxDate)) {
-			this.maxDate = addYears(today, 1000);
+		if (this.options.maxDate && Moment(this.options.maxDate).isValid()) {
+			this.maxDate = Moment(this.options.maxDate);
+		} else {
+			this.maxDate = null;
 		}
 
-		this.displayFormat = this.options && this.options.displayFormat || 'MM/YYYY';
+		this.mode = this.mode || this.options.mode || 'months';
 
-		this.mode = this.mode || this.options && this.options.mode || 'days';
+		switch (this.mode) {
+			case 'days': {
+				this.defaultFormat = 'DD/MM/YYYY';
+				break;
+			}
+			case 'years': {
+				this.defaultFormat = 'YYYY';
+				break;
+			}
+			case 'months': default: {
+				this.defaultFormat = 'MM/YYYY';
+				break;
+			}
+		}	
+		this.format = this.options.format || this.defaultFormat;
 
 		this.datepickerOptions = {
-			locale: enLocale,
 			minView: this.mode,
-
-			//minYear: getYear(this.minDate),
-			//maxYear: getYear(this.maxDate),
 		};
+
+		this.updateInputText();
 	}
 
 	openDialog() {
 		if (this.disabled) {
 			return;
 		}
+
 		this.isDialogOpen = true;
 	}
 
@@ -124,26 +125,28 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 		this.isDialogOpen = false;
 	}
 
-	setInputDate(date) {
-		this.inputText = format(date, this.displayFormat)
+	setInputText(date) {
+		this.inputText = date ? date.format(this.format) : '';
+	}
+
+	updateInputText() {
+		this.setInputText(this.date);
 	}
 
 	onChaneDataFromDialog(newDate) {
-		this.date = newDate;
-		this.setInputDate(newDate);
+		this.setInputText(newDate);
 
 		// TODO: validate
 		this.value = newDate;
 	}
 
+	writeValue(val: Date | string): void {
 
-	writeValue(val: Date): void {
-
-		this.date = val;
-		this.value = val;
-
-		if (val) {
-			this.setInputDate(val);
+		if (Moment(val).isValid()) {
+			this.date = Moment(val);
+			this.setInputText(this.date);
+		} else {
+			this.date = null;
 		}
 	}
 
