@@ -1,5 +1,5 @@
 import { Component, OnInit, Input, Output, OnChanges, SimpleChanges, ElementRef, HostListener, forwardRef, EventEmitter } from '@angular/core';
-import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
+import { NG_VALUE_ACCESSOR, ControlValueAccessor  } from '@angular/forms';
 import { ISlimScrollOptions } from 'ngx-slimscroll';
 
 import * as moment from 'moment';
@@ -136,29 +136,42 @@ export class NgDatepickerComponent implements ControlValueAccessor, OnInit, OnCh
 		this.minView = this.options.minView || 'months';
 		this.view = this.minView;
 
-		
 	}
 
 	next(): void {
-
-		if (this.view === 'days') {
-			this.date.add(1,'month');
-			this.generateCalendar();
-		} else {
-			this.date.add(1, 'year');
-			this.generateMonths();
-		}
+		this.nextMonthOrYear(this.view === 'days' ? 'month' : 'year');
 	}
 
 	prev(): void {
+		this.prevMonthOrYear(this.view === 'days' ? 'month' : 'year');
+	}
 
-		if (this.view === 'days') {
-			this.date.subtract(1, 'month');
-			this.generateCalendar();
-		} else {
-			this.date.subtract(1, 'year');
-			this.generateMonths();
+	nextMonthOrYear(part: 'month' | 'year') {
+
+		if (this.maxDate) {
+			const nextData: moment.Moment = Moment(this.date).add(1, part);
+
+			if (nextData.isAfter(this.maxDate, part)) {
+				return;
+			}
 		}
+
+		this.date.add(1, part);
+		this.initView();
+	}
+
+	prevMonthOrYear(part: 'month' | 'year') {
+
+		if (this.minDate) {
+			const prevData: moment.Moment = Moment(this.date).subtract(1, part);
+
+			if (prevData.isBefore(this.minDate, part)) {
+				return;
+			}
+		}
+
+		this.date.subtract(1, part);
+		this.initView();
 	}
 
 	setDate(e: MouseEvent, seletedDate: moment.Moment): void {

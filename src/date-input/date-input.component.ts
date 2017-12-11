@@ -1,7 +1,7 @@
 import {DatepickerOptions} from '../ng-datepicker/ng-datepicker.component';
 
 import { Component, OnInit, OnChanges, Input, Output, SimpleChanges, HostListener, forwardRef, EventEmitter } from '@angular/core';
-import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
+import { NG_VALUE_ACCESSOR, ControlValueAccessor, NG_VALIDATORS, Validator } from '@angular/forms';
 
 import * as moment from 'moment';
 const Moment: any = (<any>moment).default || moment;
@@ -61,7 +61,7 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 
 	set value(val: moment.Moment) {
 		this.date = val;
-		let result = this.date ? this.date.format() : null;
+		let result = this.date ? this.date.format('YYYY-MM-DD') : null;
 		this.onChangeCallback(result);
 	}
 	
@@ -161,7 +161,6 @@ export class DateInputComponent implements ControlValueAccessor, OnInit, OnChang
 			this.setNewVal(currentDat);
 		}
 	}
-
 
 	setNewVal(val: moment.Moment) {
 		// TODO: validate for max and min
